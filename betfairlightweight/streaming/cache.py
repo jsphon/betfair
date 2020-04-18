@@ -1,3 +1,4 @@
+from sortedcontainers import SortedDict
 import datetime
 from typing import Union
 
@@ -23,7 +24,11 @@ class Available:
         :param int deletion_select: Used to decide if update should delete cache
         :param bool reverse: Used for sorting
         """
-        self.prices = prices or []
+        #self.prices = prices or []
+        if prices:
+            self.prices = SortedDict({(price_size[deletion_select-1], price_size[deletion_select]) for price_size in prices})
+        else:
+            self.prices = SortedDict()
         self.deletion_select = deletion_select
         self.reverse = reverse
 
@@ -31,34 +36,58 @@ class Available:
         self.sort()
 
     def sort(self) -> None:
-        self.prices.sort(reverse=self.reverse)
-        self.serialise = [
-            {
-                "price": volume[self.deletion_select - 1],
-                "size": volume[self.deletion_select],
-            }
-            for volume in self.prices
-        ]
+        # self.prices.sort(reverse=self.reverse)
+        # self.serialise = [
+        #     {
+        #         "price": volume[self.deletion_select - 1],
+        #         "size": volume[self.deletion_select],
+        #     }
+        #     for volume in self.prices
+        # ]
+        if self.reverse:
+            self.serialise = [
+                {
+                    'price': price,
+                    'size': self.prices[price]
+                }
+                for price in reversed(self.prices)
+            ]
+        else:
+            self.serialise = [
+                {
+                    'price': price,
+                    'size': self.prices[price]
+                }
+                for price in self.prices
+            ]
 
     def clear(self) -> None:
-        self.prices = []
+        #self.prices = []
+        self.prices = SortedDict()
         self.sort()
 
     def update(self, book_update: list) -> None:
         for book in book_update:
-            for (count, trade) in enumerate(self.prices):
-                if trade[0] == book[0]:
-                    if book[self.deletion_select] == 0:
-                        del self.prices[count]
-                        break
-                    else:
-                        self.prices[count] = book
-                        break
+            book_price = book[self.deletion_select-1]
+            if book[self.deletion_select] == 0:
+                if book_price in self.prices:
+                    del self.prices[book_price]
             else:
-                if book[self.deletion_select] != 0:
-                    # handles betfair bug,
-                    # https://forum.developer.betfair.com/forum/sports-exchange-api/exchange-api/3425-streaming-bug
-                    self.prices.append(book)
+                self.prices[book_price] = book[self.deletion_select]
+            # for (count, trade) in enumerate(self.prices):
+            #     if trade[0] == book[0]:
+            #         if book[self.deletion_select] == 0:
+            #             del self.prices[count]
+            #             break
+            #         else:
+            #             self.prices[count] = book
+            #             break
+            # else:
+            # Don't need to replicate this, as if the price is not found, it has been added to the dict anyway
+            #     if book[self.deletion_select] != 0:
+            #         # handles betfair bug,
+            #         # https://forum.developer.betfair.com/forum/sports-exchange-api/exchange-api/3425-streaming-bug
+            #         self.prices.append(book)
         self.sort()
 
 

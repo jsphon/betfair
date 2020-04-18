@@ -1,6 +1,9 @@
 import unittest
 from unittest import mock
 
+from sortedcontainers import SortedDict
+
+from betfairlightweight.exceptions import CacheError
 from betfairlightweight.resources.baseresource import BaseResource
 from betfairlightweight.streaming.cache import (
     OrderBookCache,
@@ -10,14 +13,17 @@ from betfairlightweight.streaming.cache import (
     RunnerBook,
     Available,
 )
-from betfairlightweight.exceptions import CacheError
 from tests.unit.tools import create_mock_json
 
 
 class TestAvailable(unittest.TestCase):
     def setUp(self):
-        self.prices = [[1, 1.02, 34.45], [0, 1.01, 12]]
-        self.available = Available(self.prices, 2)
+        price_sizes = [[1, 1.02, 34.45], [0, 1.01, 12]]
+        self.prices = SortedDict({
+            1.02: 34.45,
+            1.01: 12
+        })
+        self.available = Available(price_sizes, 2)
 
     def test_init(self):
         assert self.available.prices == self.prices
@@ -44,80 +50,128 @@ class TestAvailable(unittest.TestCase):
 
     def test_clear(self):
         self.available.clear()
-        assert self.available.prices == []
+        assert self.available.prices == SortedDict()
 
-    def test_update_available_new_update(self):
+    def test_update_available_new_update1(self):
         # [price, size]
         book_update = [[30, 6.9]]
         current = [[27, 0.95], [13, 28.01], [1.02, 1157.21]]
-        expected = [[1.02, 1157.21], [13, 28.01], [27, 0.95], [30, 6.9]]
+        #expected = [[1.02, 1157.21], [13, 28.01], [27, 0.95], [30, 6.9]]
+        expected = SortedDict({
+            1.02:1157.21,
+            13: 28.01,
+            27: 0.95,
+            30: 6.9
+        })
 
         available = Available(current, 1)
         available.update(book_update)
-        assert current == expected
+        #assert current == expected
+        assert expected==available.prices
+
+    def test_update_available_new_update2(self):
 
         book_update = [[30, 6.9], [1.01, 12]]
         current = [[27, 0.95], [13, 28.01], [1.02, 1157.21]]
-        expected = [[1.01, 12], [1.02, 1157.21], [13, 28.01], [27, 0.95], [30, 6.9]]
+        #expected = [[1.01, 12], [1.02, 1157.21], [13, 28.01], [27, 0.95], [30, 6.9]]
+        expected = SortedDict({
+            1.01: 12,
+            1.02: 1157.21,
+            13: 28.01,
+            27:0.95,
+            30:6.9
+        })
 
         available = Available(current, 1)
         available.update(book_update)
-        assert current == expected
+        #assert current == expected
+        assert expected==available.prices
 
+    def test_update_available_new_update3(self):
         # [position, price, size]
         book_update = [[0, 36, 0.57]]
         current = []
-        expected = [[0, 36, 0.57]]
+        #expected = [[0, 36, 0.57]]
+        expected = SortedDict({36:0.57})
 
         available = Available(current, 2)
         available.update(book_update)
-        assert available.prices == expected
+        #assert available.prices == expected
+        assert expected==available.prices
 
-    def test_update_available_new_replace(self):
-        # [price, size]
+    def test_update_available_new_replace1(self):
         book_update = [[27, 6.9]]
         current = [[27, 0.95], [13, 28.01], [1.02, 1157.21]]
-        expected = [[1.02, 1157.21], [13, 28.01], [27, 6.9]]
+
+        expected = SortedDict({
+            1.02: 1157.21,
+            13: 28.01,
+            27: 6.9
+        })
 
         available = Available(current, 1)
         available.update(book_update)
-        assert current == expected
+        assert expected == available.prices
 
+    def test_update_available_new_replace2(self):
         # [position, price, size]
         book_update = [[0, 36, 0.57]]
         current = [[0, 36, 10.57], [1, 38, 3.57]]
-        expected = [[0, 36, 0.57], [1, 38, 3.57]]
+        #expected = [[0, 36, 0.57], [1, 38, 3.57]]
+        expected = SortedDict({
+            36: 0.57,
+            38: 3.57
+        })
 
         available = Available(current, 2)
         available.update(book_update)
-        assert current == expected
+        # assert current == expected
+        assert expected == available.prices
+
+    def test_update_available_new_replace3(self):
 
         # tests handling of betfair bug, http://forum.bdp.betfair.com/showthread.php?t=3351
         book_update = [[2, 0, 0], [1, 1.01, 9835.74], [0, 1.02, 1126.22]]
         current = [[1, 1.01, 9835.74], [0, 1.02, 1126.22]]
-        expected = [[0, 1.02, 1126.22], [1, 1.01, 9835.74]]
+        #expected = [[0, 1.02, 1126.22], [1, 1.01, 9835.74]]
+        expected = SortedDict({
+            1.02: 1126.22,
+            1.01: 9835.74
+        })
 
         available = Available(current, 2)
         available.update(book_update)
-        assert current == expected
+        assert expected == available.prices
+        #assert current == expected
 
-    def test_update_available_new_remove(self):
+    def test_update_available_new_remove1(self):
         book_update = [[27, 0]]
         current = [[27, 0.95], [13, 28.01], [1.02, 1157.21]]
-        expected = [[1.02, 1157.21], [13, 28.01]]
+        #expected = [[1.02, 1157.21], [13, 28.01]]
+        expected = SortedDict({
+            1.02: 1157.21,
+            13: 28.01
+        })
 
         available = Available(current, 1)
         available.update(book_update)
-        assert current == expected
+        #assert current == expected
+        assert expected==available.prices
+
+    def test_update_available_new_remove2(self):
 
         # [position, price, size]
         book_update = [[0, 36, 0], [1, 38, 0], [0, 38, 3.57]]
         current = [[0, 36, 10.57], [1, 38, 3.57]]
-        expected = [[0, 38, 3.57]]
+        #expected = [[0, 38, 3.57]]
+        expected = SortedDict({
+            38: 3.57
+        })
 
         available = Available(current, 2)
         available.update(book_update)
-        assert current == expected
+        #assert current == expected
+        assert expected==available.prices
 
 
 class TestMarketBookCache(unittest.TestCase):
@@ -174,7 +228,7 @@ class TestMarketBookCache(unittest.TestCase):
     @mock.patch("betfairlightweight.streaming.cache.MarketDefinition")
     @mock.patch("betfairlightweight.streaming.cache.MarketBook")
     def test_create_resource(
-        self, mock_market_book, mock_market_definition, mock_serialise
+            self, mock_market_book, mock_market_definition, mock_serialise
     ):
         # lightweight
         market_book = self.market_book_cache.create_resource(1234, {"test"}, True)
@@ -238,15 +292,15 @@ class TestRunnerBook(unittest.TestCase):
         self.runner_book.available_to_back = mock_available_to_back
 
         assert (
-            self.runner_book.serialise_available_to_back()
-            == mock_available_to_back.serialise
+                self.runner_book.serialise_available_to_back()
+                == mock_available_to_back.serialise
         )
 
         mock_available_to_back.prices = False
         self.runner_book.best_available_to_back = mock_best_available_to_back
         assert (
-            self.runner_book.serialise_available_to_back()
-            == mock_best_available_to_back.serialise
+                self.runner_book.serialise_available_to_back()
+                == mock_best_available_to_back.serialise
         )
 
         mock_best_available_to_back.prices = False
@@ -254,8 +308,8 @@ class TestRunnerBook(unittest.TestCase):
             mock_best_display_available_to_back
         )
         assert (
-            self.runner_book.serialise_available_to_back()
-            == mock_best_display_available_to_back.serialise
+                self.runner_book.serialise_available_to_back()
+                == mock_best_display_available_to_back.serialise
         )
 
     def test_serialise_lay(self):
@@ -268,15 +322,15 @@ class TestRunnerBook(unittest.TestCase):
         self.runner_book.available_to_lay = mock_available_to_lay
 
         assert (
-            self.runner_book.serialise_available_to_lay()
-            == mock_available_to_lay.serialise
+                self.runner_book.serialise_available_to_lay()
+                == mock_available_to_lay.serialise
         )
 
         mock_available_to_lay.prices = False
         self.runner_book.best_available_to_lay = mock_best_available_to_lay
         assert (
-            self.runner_book.serialise_available_to_lay()
-            == mock_best_available_to_lay.serialise
+                self.runner_book.serialise_available_to_lay()
+                == mock_best_available_to_lay.serialise
         )
 
         mock_best_available_to_lay.prices = False
@@ -284,8 +338,8 @@ class TestRunnerBook(unittest.TestCase):
             mock_best_display_available_to_lay
         )
         assert (
-            self.runner_book.serialise_available_to_lay()
-            == mock_best_display_available_to_lay.serialise
+                self.runner_book.serialise_available_to_lay()
+                == mock_best_display_available_to_lay.serialise
         )
 
     def test_empty_serialise(self):
