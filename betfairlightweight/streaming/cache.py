@@ -48,17 +48,17 @@ class Available:
             self.serialise = [
                 {
                     'price': price,
-                    'size': self.prices[price]
+                    'size': size
                 }
-                for price in reversed(self.prices)
+                for price, size in reversed(self.prices.items())
             ]
         else:
             self.serialise = [
                 {
                     'price': price,
-                    'size': self.prices[price]
+                    'size': size,
                 }
-                for price in self.prices
+                for price, size in self.prices.items()
             ]
 
     def clear(self) -> None:
