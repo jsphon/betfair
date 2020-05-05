@@ -26,7 +26,11 @@ class Available:
         """
         #self.prices = prices or []
         if prices:
-            self.prices = SortedDict({(price_size[deletion_select-1], price_size[deletion_select]) for price_size in prices})
+
+            d = dict((ps[deletion_select - 1], {'price': ps[deletion_select - 1],'size': ps[deletion_select]})
+                                      for ps in prices
+                     )
+            self.prices = SortedDict(d)
         else:
             self.prices = SortedDict()
         self.deletion_select = deletion_select
@@ -45,21 +49,9 @@ class Available:
         #     for volume in self.prices
         # ]
         if self.reverse:
-            self.serialise = [
-                {
-                    'price': price,
-                    'size': size
-                }
-                for price, size in reversed(self.prices.items())
-            ]
+            self.serialise = list(reversed(self.prices.values()))
         else:
-            self.serialise = [
-                {
-                    'price': price,
-                    'size': size,
-                }
-                for price, size in self.prices.items()
-            ]
+            self.serialise = list(self.prices.values())
 
     def clear(self) -> None:
         #self.prices = []
@@ -73,7 +65,7 @@ class Available:
                 if book_price in self.prices:
                     del self.prices[book_price]
             else:
-                self.prices[book_price] = book[self.deletion_select]
+                self.prices[book_price] = {'price': book[self.deletion_select-1], 'size': book[self.deletion_select]}
             # for (count, trade) in enumerate(self.prices):
             #     if trade[0] == book[0]:
             #         if book[self.deletion_select] == 0:
